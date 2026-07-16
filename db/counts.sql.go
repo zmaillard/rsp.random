@@ -81,6 +81,44 @@ func (q *Queries) GetPlaceCounts(ctx context.Context) ([]GetPlaceCountsRow, erro
 	return items, nil
 }
 
+const getSigns = `-- name: GetSigns :many
+SELECT imageid::text, country_slug, state_slug, place_slug, county_slug FROM sign.vwhugohighwaysign
+`
+
+type GetSignsRow struct {
+	Imageid     string
+	CountrySlug string
+	StateSlug   string
+	PlaceSlug   *string
+	CountySlug  *string
+}
+
+func (q *Queries) GetSigns(ctx context.Context) ([]GetSignsRow, error) {
+	rows, err := q.db.Query(ctx, getSigns)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetSignsRow
+	for rows.Next() {
+		var i GetSignsRow
+		if err := rows.Scan(
+			&i.Imageid,
+			&i.CountrySlug,
+			&i.StateSlug,
+			&i.PlaceSlug,
+			&i.CountySlug,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getStateCounts = `-- name: GetStateCounts :many
 select aas.slug,count(*) as counter from sign.highwaysign
 inner join sign.admin_area_state aas on aas.id = highwaysign.admin_area_state_id

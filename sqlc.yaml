@@ -9,3 +9,12 @@ sql:
         out: "db"
         sql_package: "pgx/v5"
         emit_interface: true
+        overrides:
+          - column: "sign.vwhugohighwaysign.place_slug"
+            go_type:
+              type: string
+              pointer: true
+          - column: "sign.vwhugohighwaysign.county_slug"
+            go_type:
+              type: string
+              pointer: true

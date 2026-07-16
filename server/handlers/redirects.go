@@ -10,7 +10,18 @@ import (
 )
 
 func HandleRandomSign(search services.SearchService, cfg *config.Config) echo.HandlerFunc {
+	type HandleRandomSignDto struct {
+		IdOnly bool `query:"idOnly"`
+	}
 	return func(c *echo.Context) error {
+		var body HandleRandomSignDto
+		if err := c.Bind(&body); err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, "Invalid Request")
+		}
+		if err := c.Validate(body); err != nil {
+			return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+		}
+
 		res, err := search.RandomSign()
 		if err != nil {
 			return echo.NewHTTPError(http.StatusInternalServerError, "unable to retrieve result")
@@ -21,6 +32,10 @@ func HandleRandomSign(search services.SearchService, cfg *config.Config) echo.Ha
 			return echo.NewHTTPError(http.StatusInternalServerError, "unable to retrieve result")
 		}
 
+		if body.IdOnly {
+			return c.JSON(http.StatusOK, res.GetIdOnly())
+		}
+
 		return c.Redirect(http.StatusTemporaryRedirect, redirectUrl)
 	}
 
@@ -29,6 +44,7 @@ func HandleRandomSign(search services.SearchService, cfg *config.Config) echo.Ha
 func HandleRandomSignByCounty(search services.SearchService, cfg *config.Config) echo.HandlerFunc {
 	type HandleRandomSignByCountyDto struct {
 		CountySlug string `param:"statesubdivisionslug" validate:"required"`
+		IdOnly     bool   `query:"idOnly"`
 	}
 	return func(c *echo.Context) error {
 		var body HandleRandomSignByCountyDto
@@ -54,6 +70,10 @@ func HandleRandomSignByCounty(search services.SearchService, cfg *config.Config)
 			return echo.NewHTTPError(http.StatusInternalServerError, "unable to retrieve result")
 		}
 
+		if body.IdOnly {
+			return c.JSON(http.StatusOK, res.GetIdOnly())
+		}
+
 		return c.Redirect(http.StatusTemporaryRedirect, redirectUrl)
 	}
 
@@ -61,6 +81,7 @@ func HandleRandomSignByCounty(search services.SearchService, cfg *config.Config)
 func HandleRandomSignByPlace(search services.SearchService, cfg *config.Config) echo.HandlerFunc {
 	type HandleRandomSignByPlaceDto struct {
 		PlaceSlug string `param:"placeslug" validate:"required"`
+		IdOnly    bool   `query:"idOnly"`
 	}
 	return func(c *echo.Context) error {
 		var body HandleRandomSignByPlaceDto
@@ -86,6 +107,10 @@ func HandleRandomSignByPlace(search services.SearchService, cfg *config.Config) 
 			return echo.NewHTTPError(http.StatusInternalServerError, "unable to retrieve result")
 		}
 
+		if body.IdOnly {
+			return c.JSON(http.StatusOK, res.GetIdOnly())
+		}
+
 		return c.Redirect(http.StatusTemporaryRedirect, redirectUrl)
 	}
 
@@ -94,6 +119,7 @@ func HandleRandomSignByPlace(search services.SearchService, cfg *config.Config) 
 func HandleRandomSignByState(search services.SearchService, cfg *config.Config) echo.HandlerFunc {
 	type HandleRandomSignByStateDto struct {
 		StateSlug string `param:"stateslug" validate:"required"`
+		IdOnly    bool   `query:"idOnly"`
 	}
 	return func(c *echo.Context) error {
 		var body HandleRandomSignByStateDto
@@ -112,6 +138,10 @@ func HandleRandomSignByState(search services.SearchService, cfg *config.Config) 
 		redirectUrl, err := res.GetRedirectUrl(cfg)
 		if err != nil {
 			return echo.NewHTTPError(http.StatusInternalServerError, "unable to retrieve result")
+		}
+
+		if body.IdOnly {
+			return c.JSON(http.StatusOK, res.GetIdOnly())
 		}
 
 		return c.Redirect(http.StatusTemporaryRedirect, redirectUrl)

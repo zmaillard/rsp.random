@@ -17,7 +17,7 @@ import (
 	"github.com/labstack/echo/v5/middleware"
 )
 
-func NewEchoServer(config *config.Config, mgr *db.SqlManager, httpClient *http.Client, badgerDb *badger.DB, backgroundChan chan func(context.Context) error) *echo.Echo {
+func NewEchoServer(config *config.Config, mgr *db.SqlManager, httpClient *http.Client, badgerDb *badger.DB, backgroundChan chan services.UpdateCounterProcess) *echo.Echo {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
 
@@ -49,8 +49,10 @@ func NewEchoServer(config *config.Config, mgr *db.SqlManager, httpClient *http.C
 
 	searchService := services.NewSearchService(httpClient, badgerDb, config)
 	updateStoreService := services.NewCounterService(mgr, badgerDb)
-	backgroundChan <- updateStoreService.UpdateCounts
 
+	if config.LoadDataAtStartup {
+		backgroundChan <- updateStoreService.UpdateData
+	}
 	addRoutes(httpServer, config, updateStoreService, searchService, backgroundChan)
 
 	return httpServer

@@ -12,6 +12,7 @@ import (
 
 	"github.com/dgraph-io/badger/v4"
 	"github.com/labstack/echo/v5"
+	"rsp.random/services"
 
 	"rsp.random/config"
 	"rsp.random/db"
@@ -54,7 +55,16 @@ func main() {
 		Timeout: 10 * time.Second,
 	}
 
-	backgroundCh := make(chan func(context.Context) error, 1)
+	backgroundCh := make(chan services.UpdateCounterProcess, 1)
+
+	go func() {
+		for f := range backgroundCh {
+			err := f(ctx)
+			if err != nil {
+				slog.Warn("background task failed", "error", err)
+			}
+		}
+	}()
 
 	echoServer := server.NewEchoServer(rspConfig, mgr, httpClient, badgerDb, backgroundCh)
 	if err != nil {
@@ -70,10 +80,4 @@ func main() {
 		echoServer.Logger.Error("failed to start server", "error", err)
 	}
 
-	for f := range backgroundCh {
-		err := f(ctx)
-		if err != nil {
-			slog.Warn("background task failed", "error", err)
-		}
-	}
 }

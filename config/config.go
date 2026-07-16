@@ -1,26 +1,18 @@
 package config
 
 import (
-	"net/url"
-
 	"github.com/kelseyhightower/envconfig"
 )
 
 type Config struct {
-	DBUser        string `envconfig:"DB_USER"`
-	DBHost        string `envconfig:"DB_HOST"`
-	DBPassword    string `envconfig:"DB_PASSWORD"`
-	DBName        string `envconfig:"DB_NAME"`
-	DBPort        string `envconfig:"DB_PORT"`
-	SearchServer  string `envconfig:"SEARCH_SERVER"`
-	SignIndex     string `envconfig:"SEARCH_SIGN_INDEX"`
-	SearchApiKey  string `envconfig:"SEARCH_API_TOKEN"`
-	BaseUrl       string `envconfig:"BASE_URL"`
-	VersionNumber string
-}
-
-func (c *Config) GetSearchUrl() (string, error) {
-	return url.JoinPath(c.SearchServer, "indexes", c.SignIndex, "search")
+	DBUser            string `envconfig:"DB_USER"`
+	DBHost            string `envconfig:"DB_HOST"`
+	DBPassword        string `envconfig:"DB_PASSWORD"`
+	DBName            string `envconfig:"DB_NAME"`
+	DBPort            string `envconfig:"DB_PORT"`
+	BaseUrl           string `envconfig:"BASE_URL"`
+	LoadDataAtStartup bool   `envconfig:"LOAD_DATA_STARTUP"`
+	VersionNumber     string
 }
 
 func NewConfig() (*Config, error) {

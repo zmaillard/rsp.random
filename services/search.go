@@ -2,22 +2,24 @@ package services
 
 import (
 	"bytes"
-	"encoding/json"
-	"errors"
+	"encoding/gob"
 	"fmt"
-	"io"
 	"math/rand/v2"
 	"net/http"
 	"net/url"
 	"strconv"
-	"time"
 
 	"github.com/dgraph-io/badger/v4"
 	"rsp.random/config"
 )
 
+type SearchResultSlim struct {
+	ImageId string `json:"imageId"`
+}
+
 type SearchResult interface {
 	GetRedirectUrl(c *config.Config) (string, error)
+	GetIdOnly() SearchResultSlim
 }
 
 type SearchService interface {
@@ -33,130 +35,139 @@ type searchService struct {
 	config     *config.Config
 }
 
-type searchBody struct {
-	Query  string `json:"q"`
-	Filter string `json:"filter"`
-	Limit  int    `json:"limit"`
-	Offset int    `json:"offset"`
-}
-
 func NewSearchService(httpClient *http.Client, badgerDb *badger.DB, cfg *config.Config) SearchService {
 	return &searchService{httpClient: httpClient, badgerDb: badgerDb, config: cfg}
 }
 
-func (s searchService) getSearchBody(filter string, offset int) ([]byte, error) {
-	b := searchBody{
-		Query:  "",
-		Filter: filter,
-		Limit:  1,
-		Offset: offset,
-	}
+func (s SearchResultSlim) GetRedirectUrl(c *config.Config) (string, error) {
+	return url.JoinPath(c.BaseUrl, "sign", s.ImageId)
+}
 
-	return json.Marshal(b)
+func (s SearchResultSlim) GetIdOnly() SearchResultSlim {
+	return SearchResultSlim{ImageId: s.ImageId}
 }
 
 func (s searchService) RandomSign() (SearchResult, error) {
-	count := 0
+	var valCopy []byte
 	err := s.badgerDb.View(func(txn *badger.Txn) error {
-		item, berr := txn.Get([]byte("allsigns"))
+		key := "totalCount"
+		item, berr := txn.Get([]byte(key))
 		if berr != nil {
 			return berr
 		}
-		scount := item.String()
-		count, berr = strconv.Atoi(scount)
+		berr = item.Value(func(val []byte) error {
+			valCopy = append([]byte{}, val...)
+			return nil
+		})
 		return berr
 	})
-
-	if count == 0 {
-		return nil, errors.New("no signs found")
-	}
-	offset := rand.N[int](count)
-	url, err := s.config.GetSearchUrl()
-	if err != nil {
-		return nil, err
-	}
-	searchBody, err := s.getSearchBody("", offset)
 	if err != nil {
 		return nil, err
 	}
 
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(searchBody))
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", s.config.SearchApiKey))
-	req.Header.Set("Content-Type", "application/json")
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
+	var totalCount string
+	gob.NewDecoder(bytes.NewReader(valCopy)).Decode(&totalCount)
 
-	bodyBytes, err := io.ReadAll(resp.Body)
+	iTotalCount, err := strconv.Atoi(totalCount)
 	if err != nil {
 		return nil, err
 	}
-	var searchResult searchResult
-	err = json.Unmarshal(bodyBytes, &searchResult)
-	return searchResult, err
+
+	offset := rand.N[int](iTotalCount)
+
+	var resCopy []byte
+	err = s.badgerDb.View(func(txn *badger.Txn) error {
+		key := strconv.Itoa(offset)
+		item, berr := txn.Get([]byte(key))
+		if berr != nil {
+			return berr
+		}
+		berr = item.Value(func(val []byte) error {
+			resCopy = append([]byte{}, val...)
+			return nil
+		})
+		return berr
+	})
+	if err != nil {
+		return nil, err
+	}
+	var imageId string
+	gob.NewDecoder(bytes.NewReader(resCopy)).Decode(&imageId)
+
+	return SearchResultSlim{ImageId: imageId}, err
 }
 
 func (s searchService) RandomSignByState(state string) (SearchResult, error) {
-	//TODO implement me
-	panic("implement me")
+	var valCopy []byte
+	err := s.badgerDb.View(func(txn *badger.Txn) error {
+		item, berr := txn.Get([]byte(state))
+		if berr != nil {
+			return berr
+		}
+		berr = item.Value(func(val []byte) error {
+			valCopy = append([]byte{}, val...)
+			return nil
+		})
+		return berr
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var resultArray []string
+	gob.NewDecoder(bytes.NewReader(valCopy)).Decode(&resultArray)
+
+	offset := rand.N[int](len(resultArray))
+	return SearchResultSlim{ImageId: resultArray[offset]}, err
+
 }
 
 func (s searchService) RandomSignByCounty(state string, county string) (SearchResult, error) {
-	//TODO implement me
-	panic("implement me")
+	key := fmt.Sprintf("%s_%s", state, county)
+	var valCopy []byte
+	err := s.badgerDb.View(func(txn *badger.Txn) error {
+		item, berr := txn.Get([]byte(key))
+		if berr != nil {
+			return berr
+		}
+		berr = item.Value(func(val []byte) error {
+			valCopy = append([]byte{}, val...)
+			return nil
+		})
+		return berr
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	var resultArray []string
+	gob.NewDecoder(bytes.NewReader(valCopy)).Decode(&resultArray)
+
+	offset := rand.N[int](len(resultArray))
+	return SearchResultSlim{ImageId: resultArray[offset]}, err
 }
 
 func (s searchService) RandomSignByPlace(state string, place string) (SearchResult, error) {
-	//TODO implement me
-	panic("implement me")
-}
+	key := fmt.Sprintf("%s_%s", state, place)
+	var valCopy []byte
+	err := s.badgerDb.View(func(txn *badger.Txn) error {
+		item, berr := txn.Get([]byte(key))
+		if berr != nil {
+			return berr
+		}
+		berr = item.Value(func(val []byte) error {
+			valCopy = append([]byte{}, val...)
+			return nil
+		})
+		return berr
+	})
+	if err != nil {
+		return nil, err
+	}
 
-type searchResult struct {
-	Hits []struct {
-		Id  string `json:"id"`
-		Geo struct {
-			Lng float64 `json:"lng"`
-			Lat float64 `json:"lat"`
-		} `json:"_geo"`
-		Country struct {
-			Name string `json:"name"`
-			Slug string `json:"slug"`
-		} `json:"country"`
-		County struct {
-			Name string `json:"name"`
-			Slug string `json:"slug"`
-		} `json:"county"`
-		DateTaken   string `json:"dateTaken"`
-		Description string `json:"description"`
-		Highways    []struct {
-			Name string `json:"name"`
-			Slug string `json:"slug"`
-		} `json:"highways"`
-		Place struct {
-			Name string `json:"name"`
-			Slug string `json:"slug"`
-		} `json:"place"`
-		State struct {
-			Name string `json:"name"`
-			Slug string `json:"slug"`
-		} `json:"state"`
-		Tags       interface{} `json:"tags"`
-		Title      string      `json:"title"`
-		Url        string      `json:"url"`
-		Quality    int         `json:"quality"`
-		DateTaken1 time.Time   `json:"date_taken"`
-	} `json:"hits"`
-	Query              string `json:"query"`
-	ProcessingTimeMs   int    `json:"processingTimeMs"`
-	Limit              int    `json:"limit"`
-	Offset             int    `json:"offset"`
-	EstimatedTotalHits int    `json:"estimatedTotalHits"`
-	RequestUid         string `json:"requestUid"`
-}
+	var resultArray []string
+	gob.NewDecoder(bytes.NewReader(valCopy)).Decode(&resultArray)
 
-func (s searchResult) GetRedirectUrl(c *config.Config) (string, error) {
-	return url.JoinPath(c.BaseUrl, "sign", s.Hits[0].Id)
+	offset := rand.N[int](len(resultArray))
+	return SearchResultSlim{ImageId: resultArray[offset]}, err
 }

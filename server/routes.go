@@ -1,7 +1,6 @@
 package server
 
 import (
-	"context"
 	"encoding/gob"
 	"net/http"
 
@@ -12,7 +11,7 @@ import (
 	"rsp.random/services"
 )
 
-func addRoutes(server *echo.Echo, c *config.Config, counterService services.CounterService, searchService services.SearchService, backgroundChan chan func(context.Context) error) {
+func addRoutes(server *echo.Echo, c *config.Config, counterService services.CounterService, searchService services.SearchService, backgroundChan chan services.UpdateCounterProcess) {
 
 	gob.Register(map[string]interface{}{})
 

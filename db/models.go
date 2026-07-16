@@ -336,8 +336,8 @@ type SignVwhugohighwaysign struct {
 	Point           interface{}
 	CountrySlug     string
 	StateSlug       string
-	PlaceSlug       string
-	CountySlug      string
+	PlaceSlug       *string
+	CountySlug      *string
 	Tags            []string
 	Categories      []string
 	Highways        []string

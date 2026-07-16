@@ -23,3 +23,6 @@ from sign.admin_area_place p inner join sign.admin_area_state s
 
 -- name: GetTotalCounts :one
 select count(*) from sign.highwaysign;
+
+-- name: GetSigns :many
+SELECT imageid::text, country_slug, state_slug, place_slug, county_slug FROM sign.vwhugohighwaysign;
