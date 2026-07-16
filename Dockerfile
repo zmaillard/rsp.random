@@ -36,7 +36,6 @@ FROM gcr.io/distroless/base-debian10
 ARG TARGETPLATFORM
 
 WORKDIR /
-RUN mkdir /data
 
 COPY --from=build /main /main
 EXPOSE 1333
