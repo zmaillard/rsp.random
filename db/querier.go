@@ -9,11 +9,7 @@ import (
 )
 
 type Querier interface {
-	GetCountyCounts(ctx context.Context) ([]GetCountyCountsRow, error)
-	GetPlaceCounts(ctx context.Context) ([]GetPlaceCountsRow, error)
 	GetSigns(ctx context.Context) ([]GetSignsRow, error)
-	GetStateCounts(ctx context.Context) ([]GetStateCountsRow, error)
-	GetTotalCounts(ctx context.Context) (int64, error)
 }
 
 var _ Querier = (*Queries)(nil)

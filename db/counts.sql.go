@@ -7,79 +7,7 @@ package db
 
 import (
 	"context"
-
-	"github.com/jackc/pgx/v5/pgtype"
 )
-
-const getCountyCounts = `-- name: GetCountyCounts :many
-select (s.slug || '_' || c.slug)::text as county_slug, county_counts.counter
-from sign.admin_area_county c inner join sign.admin_area_state s
-                                         on c.admin_area_stateid = s.id
-                              inner join (
-    select aacn.id,count(*) as counter from sign.highwaysign
-                                                inner join sign.admin_area_county aacn on aacn.id = highwaysign.admin_area_county_id
-    group by aacn.id) county_counts on c.id = county_counts.id
-`
-
-type GetCountyCountsRow struct {
-	CountySlug string
-	Counter    int64
-}
-
-func (q *Queries) GetCountyCounts(ctx context.Context) ([]GetCountyCountsRow, error) {
-	rows, err := q.db.Query(ctx, getCountyCounts)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetCountyCountsRow
-	for rows.Next() {
-		var i GetCountyCountsRow
-		if err := rows.Scan(&i.CountySlug, &i.Counter); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const getPlaceCounts = `-- name: GetPlaceCounts :many
-select (s.slug || '_' || p.slug)::text as place_slug, place_counts.counter
-from sign.admin_area_place p inner join sign.admin_area_state s
-                                        on p.admin_area_stateid = s.id
-                             inner join (
-    select aap.id,count(*) as counter from sign.highwaysign
-                                               inner join sign.admin_area_place aap on aap.id = highwaysign.admin_area_place_id
-    group by aap.id) place_counts on p.id = place_counts.id
-`
-
-type GetPlaceCountsRow struct {
-	PlaceSlug string
-	Counter   int64
-}
-
-func (q *Queries) GetPlaceCounts(ctx context.Context) ([]GetPlaceCountsRow, error) {
-	rows, err := q.db.Query(ctx, getPlaceCounts)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetPlaceCountsRow
-	for rows.Next() {
-		var i GetPlaceCountsRow
-		if err := rows.Scan(&i.PlaceSlug, &i.Counter); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
 
 const getSigns = `-- name: GetSigns :many
 SELECT imageid::text, country_slug, state_slug, place_slug, county_slug FROM sign.vwhugohighwaysign
@@ -117,46 +45,4 @@ func (q *Queries) GetSigns(ctx context.Context) ([]GetSignsRow, error) {
 		return nil, err
 	}
 	return items, nil
-}
-
-const getStateCounts = `-- name: GetStateCounts :many
-select aas.slug,count(*) as counter from sign.highwaysign
-inner join sign.admin_area_state aas on aas.id = highwaysign.admin_area_state_id
-group by aas.slug
-`
-
-type GetStateCountsRow struct {
-	Slug    pgtype.Text
-	Counter int64
-}
-
-func (q *Queries) GetStateCounts(ctx context.Context) ([]GetStateCountsRow, error) {
-	rows, err := q.db.Query(ctx, getStateCounts)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetStateCountsRow
-	for rows.Next() {
-		var i GetStateCountsRow
-		if err := rows.Scan(&i.Slug, &i.Counter); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const getTotalCounts = `-- name: GetTotalCounts :one
-select count(*) from sign.highwaysign
-`
-
-func (q *Queries) GetTotalCounts(ctx context.Context) (int64, error) {
-	row := q.db.QueryRow(ctx, getTotalCounts)
-	var count int64
-	err := row.Scan(&count)
-	return count, err
 }

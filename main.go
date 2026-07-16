@@ -27,19 +27,20 @@ func main() {
 	ctx, cancel := signal.NotifyContext(ctx, os.Interrupt)
 	defer cancel()
 
+	rspConfig, err := config.NewConfigWithVersion(Version)
+	if err != nil {
+		panic(err)
+	}
+
 	// Open the Badger database located in the /tmp/badger directory.
 	// It is created if it doesn't exist.
-	badgerDb, err := badger.Open(badger.DefaultOptions("/tmp/badger"))
+	badgerDb, err := badger.Open(badger.DefaultOptions(rspConfig.BadgerDatabasePath))
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	defer badgerDb.Close()
 
-	rspConfig, err := config.NewConfigWithVersion(Version)
-	if err != nil {
-		panic(err)
-	}
 	pgPool, err := db.NewDatabase(rspConfig)
 	mgr := db.NewSqlManager(pgPool)
 

@@ -7,7 +7,7 @@ ARG XCPUTRANSLATE_VERSION=v0.8.0
 ARG BUILDPLATFORM=linux/amd64
 FROM --platform=${BUILDPLATFORM} qmcgaw/xcputranslate:${XCPUTRANSLATE_VERSION} AS xcputranslate
 
-FROM --platform=${BUILDPLATFORM} golang:1.25-bookworm AS build
+FROM --platform=${BUILDPLATFORM} golang:1.26-bookworm AS build
 
 WORKDIR /app
 COPY --from=xcputranslate /xcputranslate xcputranslate
@@ -36,10 +36,10 @@ FROM gcr.io/distroless/base-debian10
 ARG TARGETPLATFORM
 
 WORKDIR /
+RUN mkdir /data
 
 COPY --from=build /main /main
-COPY ./public/ ./public/
-EXPOSE 1323
+EXPOSE 1333
 
 USER nonroot:nonroot
 

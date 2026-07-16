@@ -5,14 +5,16 @@ import (
 )
 
 type Config struct {
-	DBUser            string `envconfig:"DB_USER"`
-	DBHost            string `envconfig:"DB_HOST"`
-	DBPassword        string `envconfig:"DB_PASSWORD"`
-	DBName            string `envconfig:"DB_NAME"`
-	DBPort            string `envconfig:"DB_PORT"`
-	BaseUrl           string `envconfig:"BASE_URL"`
-	LoadDataAtStartup bool   `envconfig:"LOAD_DATA_STARTUP"`
-	VersionNumber     string
+	DBUser             string `envconfig:"DB_USER"`
+	DBHost             string `envconfig:"DB_HOST"`
+	DBPassword         string `envconfig:"DB_PASSWORD"`
+	DBName             string `envconfig:"DB_NAME"`
+	DBPort             string `envconfig:"DB_PORT"`
+	BaseUrl            string `envconfig:"BASE_URL"`
+	LoadDataAtStartup  bool   `envconfig:"LOAD_DATA_STARTUP"`
+	BadgerDatabasePath string `envconfig:"BADGER_PATH" default:"/tmp/badger"`
+	AdminApiKey        string `envconfig:"ADMIN_API_KEY"`
+	VersionNumber      string
 }
 
 func NewConfig() (*Config, error) {

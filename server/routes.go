@@ -6,6 +6,7 @@ import (
 
 	echoprometheus "github.com/labstack/echo-prometheus"
 	"github.com/labstack/echo/v5"
+	"github.com/labstack/echo/v5/middleware"
 	"rsp.random/config"
 	"rsp.random/server/handlers"
 	"rsp.random/services"
@@ -35,6 +36,12 @@ func addRoutes(server *echo.Echo, c *config.Config, counterService services.Coun
 	server.GET("/state/:stateslug", handlers.HandleRandomSignByState(searchService, c))
 
 	adminRoutes := server.Group("admin")
-	adminRoutes.GET("/refresh", handlers.HandleRefreshCounts(counterService, backgroundChan))
+	adminRoutes.Use(middleware.KeyAuthWithConfig(middleware.KeyAuthConfig{
+		KeyLookup: "header:x-api-key",
+		Validator: func(ctx *echo.Context, key string, source middleware.ExtractorSource) (bool, error) {
+			return key == c.AdminApiKey, nil
+		},
+	}))
+	adminRoutes.POST("/refresh", handlers.HandleRefreshCounts(counterService, backgroundChan))
 
 }
