@@ -15,7 +15,6 @@ import (
 	"rsp.random/services"
 
 	"rsp.random/config"
-	"rsp.random/db"
 	"rsp.random/server"
 )
 
@@ -41,9 +40,6 @@ func main() {
 
 	defer badgerDb.Close()
 
-	pgPool, err := db.NewDatabase(rspConfig)
-	mgr := db.NewSqlManager(pgPool)
-
 	httpClient := &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
@@ -67,7 +63,7 @@ func main() {
 		}
 	}()
 
-	echoServer := server.NewEchoServer(rspConfig, mgr, httpClient, badgerDb, backgroundCh)
+	echoServer := server.NewEchoServer(rspConfig, httpClient, badgerDb, backgroundCh)
 	if err != nil {
 		panic(err)
 	}
