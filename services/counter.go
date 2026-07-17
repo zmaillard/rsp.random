@@ -4,9 +4,11 @@ import (
 	"bytes"
 	"context"
 	"encoding/gob"
+	"log/slog"
 	"strconv"
 
 	"github.com/dgraph-io/badger/v4"
+	"rsp.random/config"
 	"rsp.random/db"
 )
 
@@ -17,19 +19,24 @@ type CounterService interface {
 }
 
 type counterService struct {
-	querier db.Querier
-	kvStore *badger.DB
+	kvStore   *badger.DB
+	rspConfig *config.Config
 }
 
-func NewCounterService(querier db.Querier, kvStore *badger.DB) CounterService {
+func NewCounterService(kvStore *badger.DB, rspConfig *config.Config) CounterService {
 	return &counterService{
-		querier: querier,
-		kvStore: kvStore,
+		kvStore:   kvStore,
+		rspConfig: rspConfig,
 	}
 }
 func (c *counterService) UpdateData(ctx context.Context) error {
 	err := c.kvStore.Update(func(txn *badger.Txn) error {
-		allSigns, berr := c.querier.GetSigns(ctx)
+		slog.Info("Starting Updating Counts")
+		pgPool, berr := db.NewDatabase(c.rspConfig)
+		defer pgPool.Close(ctx)
+		mgr := db.NewSqlManager(pgPool)
+
+		allSigns, berr := mgr.GetSigns(ctx)
 
 		if berr != nil {
 			return berr
@@ -95,6 +102,7 @@ func (c *counterService) UpdateData(ctx context.Context) error {
 
 		}
 
+		slog.Info("Updating Counts Complete")
 		return nil
 
 	})

@@ -10,14 +10,13 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v5"
 	"rsp.random/config"
-	"rsp.random/db"
 	"rsp.random/services"
 
 	echoprometheus "github.com/labstack/echo-prometheus"
 	"github.com/labstack/echo/v5/middleware"
 )
 
-func NewEchoServer(config *config.Config, mgr *db.SqlManager, httpClient *http.Client, badgerDb *badger.DB, backgroundChan chan services.UpdateCounterProcess) *echo.Echo {
+func NewEchoServer(config *config.Config, httpClient *http.Client, badgerDb *badger.DB, backgroundChan chan services.UpdateCounterProcess) *echo.Echo {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	slog.SetDefault(logger)
 
@@ -48,7 +47,7 @@ func NewEchoServer(config *config.Config, mgr *db.SqlManager, httpClient *http.C
 	httpServer.Use(middleware.Recover())
 
 	searchService := services.NewSearchService(httpClient, badgerDb, config)
-	updateStoreService := services.NewCounterService(mgr, badgerDb)
+	updateStoreService := services.NewCounterService(badgerDb, config)
 
 	if config.LoadDataAtStartup {
 		backgroundChan <- updateStoreService.UpdateData
