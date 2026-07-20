@@ -4,7 +4,6 @@ import (
 	"encoding/gob"
 	"net/http"
 
-	echoprometheus "github.com/labstack/echo-prometheus"
 	"github.com/labstack/echo/v5"
 	"github.com/labstack/echo/v5/middleware"
 	"rsp.random/config"
@@ -15,9 +14,6 @@ import (
 func addRoutes(server *echo.Echo, c *config.Config, counterService services.CounterService, searchService services.SearchService, backgroundChan chan services.UpdateCounterProcess) {
 
 	gob.Register(map[string]interface{}{})
-
-	// Prometheus
-	server.GET("/metrics", echoprometheus.NewHandler())
 
 	// Health Check
 	server.GET("/healthz", func(c *echo.Context) error {

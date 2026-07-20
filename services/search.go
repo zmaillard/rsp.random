@@ -7,6 +7,7 @@ import (
 	"math/rand/v2"
 	"net/http"
 	"net/url"
+	"slices"
 	"strconv"
 
 	"github.com/dgraph-io/badger/v4"
@@ -14,7 +15,8 @@ import (
 )
 
 type SearchResultSlim struct {
-	ImageId string `json:"imageId"`
+	ImageId      string `json:"imageId"`
+	HasProcessed bool   `json:"hasProcessed"`
 }
 
 type SearchResult interface {
@@ -27,6 +29,7 @@ type SearchService interface {
 	RandomSignByState(state string) (SearchResult, error)
 	RandomSignByCounty(state string, county string) (SearchResult, error)
 	RandomSignByPlace(state string, place string) (SearchResult, error)
+	HasProcessed(imageId string) (bool, error)
 }
 
 type searchService struct {
@@ -44,10 +47,10 @@ func (s SearchResultSlim) GetRedirectUrl(c *config.Config) (string, error) {
 }
 
 func (s SearchResultSlim) GetIdOnly() SearchResultSlim {
-	return SearchResultSlim{ImageId: s.ImageId}
+	return s
 }
 
-func (s searchService) RandomSign() (SearchResult, error) {
+func (s *searchService) RandomSign() (SearchResult, error) {
 	var valCopy []byte
 	err := s.badgerDb.View(func(txn *badger.Txn) error {
 		key := "totalCount"
@@ -66,8 +69,10 @@ func (s searchService) RandomSign() (SearchResult, error) {
 	}
 
 	var totalCount string
-	gob.NewDecoder(bytes.NewReader(valCopy)).Decode(&totalCount)
-
+	err = gob.NewDecoder(bytes.NewReader(valCopy)).Decode(&totalCount)
+	if err != nil {
+		return nil, err
+	}
 	iTotalCount, err := strconv.Atoi(totalCount)
 	if err != nil {
 		return nil, err
@@ -92,12 +97,20 @@ func (s searchService) RandomSign() (SearchResult, error) {
 		return nil, err
 	}
 	var imageId string
-	gob.NewDecoder(bytes.NewReader(resCopy)).Decode(&imageId)
+	err = gob.NewDecoder(bytes.NewReader(resCopy)).Decode(&imageId)
+	if err != nil {
+		return nil, err
+	}
 
-	return SearchResultSlim{ImageId: imageId}, err
+	hasProcessed, err := s.HasProcessed(imageId)
+	if err != nil {
+		return nil, err
+	}
+
+	return SearchResultSlim{ImageId: imageId, HasProcessed: hasProcessed}, err
 }
 
-func (s searchService) RandomSignByState(state string) (SearchResult, error) {
+func (s *searchService) RandomSignByState(state string) (SearchResult, error) {
 	var valCopy []byte
 	err := s.badgerDb.View(func(txn *badger.Txn) error {
 		item, berr := txn.Get([]byte(state))
@@ -115,14 +128,22 @@ func (s searchService) RandomSignByState(state string) (SearchResult, error) {
 	}
 
 	var resultArray []string
-	gob.NewDecoder(bytes.NewReader(valCopy)).Decode(&resultArray)
+	err = gob.NewDecoder(bytes.NewReader(valCopy)).Decode(&resultArray)
+	if err != nil {
+		return nil, err
+	}
 
 	offset := rand.N[int](len(resultArray))
-	return SearchResultSlim{ImageId: resultArray[offset]}, err
+	imageId := resultArray[offset]
+	hasProcessed, err := s.HasProcessed(imageId)
+	if err != nil {
+		return nil, err
+	}
+	return SearchResultSlim{ImageId: imageId, HasProcessed: hasProcessed}, err
 
 }
 
-func (s searchService) RandomSignByCounty(state string, county string) (SearchResult, error) {
+func (s *searchService) RandomSignByCounty(state string, county string) (SearchResult, error) {
 	key := fmt.Sprintf("%s_%s", state, county)
 	var valCopy []byte
 	err := s.badgerDb.View(func(txn *badger.Txn) error {
@@ -141,13 +162,21 @@ func (s searchService) RandomSignByCounty(state string, county string) (SearchRe
 	}
 
 	var resultArray []string
-	gob.NewDecoder(bytes.NewReader(valCopy)).Decode(&resultArray)
+	err = gob.NewDecoder(bytes.NewReader(valCopy)).Decode(&resultArray)
+	if err != nil {
+		return nil, err
+	}
 
 	offset := rand.N[int](len(resultArray))
-	return SearchResultSlim{ImageId: resultArray[offset]}, err
+	imageId := resultArray[offset]
+	hasProcessed, err := s.HasProcessed(imageId)
+	if err != nil {
+		return nil, err
+	}
+	return SearchResultSlim{ImageId: imageId, HasProcessed: hasProcessed}, err
 }
 
-func (s searchService) RandomSignByPlace(state string, place string) (SearchResult, error) {
+func (s *searchService) RandomSignByPlace(state string, place string) (SearchResult, error) {
 	key := fmt.Sprintf("%s_%s", state, place)
 	var valCopy []byte
 	err := s.badgerDb.View(func(txn *badger.Txn) error {
@@ -166,8 +195,46 @@ func (s searchService) RandomSignByPlace(state string, place string) (SearchResu
 	}
 
 	var resultArray []string
-	gob.NewDecoder(bytes.NewReader(valCopy)).Decode(&resultArray)
+	err = gob.NewDecoder(bytes.NewReader(valCopy)).Decode(&resultArray)
+	if err != nil {
+		return nil, err
+	}
 
 	offset := rand.N[int](len(resultArray))
-	return SearchResultSlim{ImageId: resultArray[offset]}, err
+	imageId := resultArray[offset]
+	hasProcessed, err := s.HasProcessed(imageId)
+	if err != nil {
+		return nil, err
+	}
+	return SearchResultSlim{ImageId: imageId, HasProcessed: hasProcessed}, err
+}
+
+func (s *searchService) HasProcessed(imageId string) (bool, error) {
+	var valCopy []byte
+	err := s.badgerDb.View(func(txn *badger.Txn) error {
+		item, berr := txn.Get([]byte("processed"))
+		if berr != nil {
+			return berr
+		}
+		berr = item.Value(func(val []byte) error {
+			valCopy = append([]byte{}, val...)
+			return nil
+		})
+		return berr
+	})
+	if err != nil {
+		return false, err
+	}
+
+	var processed []string
+	err = gob.NewDecoder(bytes.NewReader(valCopy)).Decode(&processed)
+	if err != nil {
+		return false, err
+	}
+
+	if slices.Contains(processed, imageId) {
+		return true, nil
+	}
+
+	return false, nil
 }

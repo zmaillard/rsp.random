@@ -10,6 +10,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/labstack/echo/v5"
 	"rsp.random/config"
+	"rsp.random/metrics"
 	"rsp.random/services"
 
 	echoprometheus "github.com/labstack/echo-prometheus"
@@ -22,7 +23,18 @@ func NewEchoServer(config *config.Config, httpClient *http.Client, badgerDb *bad
 
 	httpServer := echo.New()
 
-	httpServer.Use(echoprometheus.NewMiddleware("rspapi"))
+	// Initialize custom Prometheus metrics
+	metrics.Init()
+
+	httpServer.Use(echoprometheus.NewMiddleware("rsprandom"))
+	go func() {
+		metricEcho := echo.New()                                // this Echo will run on separate port 1334
+		metricEcho.GET("/metrics", echoprometheus.NewHandler()) // adds route to serve gathered metrics
+		if err := metricEcho.Start(":1334"); err != nil {
+			slog.Error("failed to start metrics server", "error", err)
+		}
+	}()
+
 	httpServer.Use(middleware.RequestLoggerWithConfig(middleware.RequestLoggerConfig{
 		LogStatus:   true,
 		LogURI:      true,

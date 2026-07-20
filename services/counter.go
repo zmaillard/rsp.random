@@ -44,7 +44,12 @@ func (c *counterService) UpdateData(ctx context.Context) error {
 
 		totalCount := len(allSigns)
 		groupings := make(map[string][]string)
+		var processed []string
 		for idx, sign := range allSigns {
+			if sign.HasProcessed.Bool {
+				processed = append(processed, sign.Imageid)
+			}
+
 			groupArr := groupings[sign.StateSlug]
 			groupArr = append(groupArr, sign.Imageid)
 			groupings[sign.StateSlug] = groupArr
@@ -83,6 +88,18 @@ func (c *counterService) UpdateData(ctx context.Context) error {
 		}
 
 		berr = txn.Set([]byte("totalCount"), totalCountBuff.Bytes())
+		if berr != nil {
+			return berr
+		}
+
+		var processedBuff bytes.Buffer
+		enc = gob.NewEncoder(&processedBuff)
+		eerr = enc.Encode(processed)
+		if eerr != nil {
+			return eerr
+		}
+
+		berr = txn.Set([]byte("processed"), processedBuff.Bytes())
 		if berr != nil {
 			return berr
 		}

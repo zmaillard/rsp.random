@@ -7,18 +7,21 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const getSigns = `-- name: GetSigns :many
-SELECT imageid::text, country_slug, state_slug, place_slug, county_slug FROM sign.vwhugohighwaysign
+SELECT imageid::text, country_slug, state_slug, place_slug, county_slug, has_processed FROM sign.vwhugohighwaysign
 `
 
 type GetSignsRow struct {
-	Imageid     string
-	CountrySlug string
-	StateSlug   string
-	PlaceSlug   *string
-	CountySlug  *string
+	Imageid      string
+	CountrySlug  string
+	StateSlug    string
+	PlaceSlug    *string
+	CountySlug   *string
+	HasProcessed pgtype.Bool
 }
 
 func (q *Queries) GetSigns(ctx context.Context) ([]GetSignsRow, error) {
@@ -36,6 +39,7 @@ func (q *Queries) GetSigns(ctx context.Context) ([]GetSignsRow, error) {
 			&i.StateSlug,
 			&i.PlaceSlug,
 			&i.CountySlug,
+			&i.HasProcessed,
 		); err != nil {
 			return nil, err
 		}

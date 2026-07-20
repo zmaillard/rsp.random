@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-07-20
+
+### Changed
+
+- Add Has Processed images to index
+- Return if sign has processed when `idonly=true`
+
+### Added
+
+- Prometheus metrics
+- Run metrics server on seperate port
+
 ## [0.2.0] - 2026-07-17
 
 ### Changed
